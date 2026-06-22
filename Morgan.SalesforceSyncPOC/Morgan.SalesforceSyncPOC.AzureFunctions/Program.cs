@@ -15,7 +15,26 @@ var kvClient = new SecretClient(
         ?? "https://kv-morgan-poc-dev.vault.azure.net/"),
     new DefaultAzureCredential());
 
-var sqlConnString = kvClient.GetSecret("SqlConnectionString").Value.Value;
+string sqlConnString;
+
+try
+{
+    var secret = kvClient.GetSecret("SqlConnectionString");
+    sqlConnString = secret?.Value?.Value;
+}
+catch (Azure.RequestFailedException ex) when (ex.Status == 404)
+{
+    throw new InvalidOperationException(
+        "Critical configuration missing: 'SqlConnectionString1' was not found in Azure Key Vault or returned an empty value. " +
+        "Application cannot start without a valid database connection string.");
+}
+
+if (string.IsNullOrWhiteSpace(sqlConnString))
+{
+    throw new InvalidOperationException(
+        "Key Vault secret 'SqlConnectionString1' is empty. Application cannot start.");
+}
+
 var aiConnString = kvClient.GetSecret("ApplicationInsightsConnectionString").Value.Value;
 
 var host = new HostBuilder()

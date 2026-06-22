@@ -19,10 +19,22 @@ builder.Services.AddControllers();
 
 builder.Configuration.AddAzureKeyVault(new Uri(builder.Configuration["KeyVaultUrl"] ?? "https://kv-morgan-poc-dev.vault.azure.net/"), new DefaultAzureCredential());
 
-string SqlConnString = builder.Configuration["SqlConnectionString"];
+string sqlConnString = builder.Configuration["SqlConnectionString"];
+if (string.IsNullOrWhiteSpace(sqlConnString))
+{
+    throw new InvalidOperationException("Critical configuration missing: 'SqlConnectionString1' was not found in Azure Key Vault or returned an empty value. " +
+        "Application cannot start without a valid database connection string.");
+}
+
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(SqlConnString)
-);
+    options.UseSqlServer(sqlConnString, sqlOptions =>
+    {
+        sqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(10),
+            errorNumbersToAdd: null);
+    }));
+
 builder.Services.AddScoped<IRepository<User>, UserRepository>();
 builder.Services.AddScoped<IRepository<OutboxMessage>, OutboxMessageRepository>();
 
