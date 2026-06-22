@@ -1,0 +1,65 @@
+# ==========================
+# Visual Studio / .NET
+# ==========================
+
+.vs/
+[Bb]in/
+[Oo]bj/
+
+*.user
+*.rsuser
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider / ReSharper
+_ReSharper*/
+*.DotSettings.user
+
+# Logs
+*.log
+
+# ==========================
+# Angular / Node
+# ==========================
+
+node_modules/
+dist/
+.angular/
+
+coverage/
+.npm/
+
+# Optional cache folders
+.cache/
+.tmp/
+.sass-cache/
+
+# ==========================
+# Environment Files
+# ==========================
+
+.env
+.env.*
+
+# Keep Angular sample env files if desired
+!.env.example
+
+# ==========================
+# OS Files
+# ==========================
+
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+
+# ==========================
+# VS Code
+# ==========================
+
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/tasks.json
+!.vscode/launch.json

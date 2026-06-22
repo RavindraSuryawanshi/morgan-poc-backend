@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "Morgan.SalesforceSyncPOC.AzureFunctions": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 7035",
+      "launchBrowser": false
+    }
+  }
+}
