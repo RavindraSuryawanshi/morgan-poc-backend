@@ -25,8 +25,13 @@ namespace Morgan.SalesforceSyncPOC.WebApi.Middlewares
         public async Task Invoke(
             HttpContext context)
         {
-            var correlationId =
-                context.TraceIdentifier;
+            var correlationId =  context.Request.Headers.TryGetValue(
+                "X-Correlation-Id", out var headerValue)
+                ? headerValue.ToString()
+                : Guid.NewGuid().ToString();
+
+            context.Items["CorrelationId"] =
+                correlationId;
 
             using (LogContext.PushProperty(
                 "CorrelationId",

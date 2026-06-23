@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Azure.Core;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Morgan.SalesforceSyncPOC.Application.DTOs.Requests;
 using Morgan.SalesforceSyncPOC.Core.Contracts;
@@ -35,7 +36,7 @@ namespace Morgan.SalesforceSyncPOC.WebApi.Controllers
         [HttpPost]
         public IActionResult Create(CreateUserRequest request)
         {
-            var correlationId = Guid.NewGuid();
+            var correlationId = GetCorrelationId();
 
             var user = new User
             {
@@ -54,13 +55,18 @@ namespace Morgan.SalesforceSyncPOC.WebApi.Controllers
             var outbox = new OutboxMessage
             {
                 CorrelationId = correlationId,
-                EventType = UserEvents.Created,
+                EventType = EventNames.Created,
                 Status = OutboxStatus.Pending,
                 CreatedDate = DateTime.UtcNow,
                 Payload = JsonSerializer.Serialize(
-                    new
+                    new IntegrationEvent
                     {
-                        UserId = user.Id
+                        EventId = Guid.NewGuid(),
+                        CorrelationId = correlationId,
+                        EntityName = "Users",
+                        EntityId = user.Id,
+                        EventType = EventNames.Created,
+                        OccurredOn = DateTime.UtcNow
                     })
             };
 
@@ -81,7 +87,7 @@ namespace Morgan.SalesforceSyncPOC.WebApi.Controllers
         [HttpGet]
         public IActionResult GetAll()
         {
-            var users = _usersRepository.GetAll().ToList();
+            var users = _usersRepository.GetAll().Where(u => u.IsDeleted == false).ToList();
 
             _logger.LogInformation("Retrieved {Count} users", users.Count);
 
@@ -116,6 +122,7 @@ namespace Morgan.SalesforceSyncPOC.WebApi.Controllers
         [HttpPut("{id:int}")]
         public IActionResult Update(int id, UpdateUserRequest request)
         {
+            var correlationId = GetCorrelationId();
             var user = _usersRepository.Get(id);
 
             if (user == null)
@@ -137,12 +144,18 @@ namespace Morgan.SalesforceSyncPOC.WebApi.Controllers
             var outbox = new OutboxMessage
             {
                 CorrelationId = Guid.NewGuid(),
-                EventType = UserEvents.Updated,
+                EventType = EventNames.Updated,
                 Status = OutboxStatus.Pending,
                 CreatedDate = DateTime.UtcNow,
-                Payload = JsonSerializer.Serialize(new
+                Payload = JsonSerializer.Serialize(
+                new IntegrationEvent
                 {
-                    UserId = user.Id
+                    EventId = Guid.NewGuid(),
+                    CorrelationId = correlationId,
+                    EntityName = "Users",
+                    EntityId = user.Id,
+                    EventType = EventNames.Updated,
+                    OccurredOn = DateTime.UtcNow
                 })
             };
 
@@ -165,6 +178,7 @@ namespace Morgan.SalesforceSyncPOC.WebApi.Controllers
         [HttpDelete("{id:int}")]
         public IActionResult Delete(int id)
         {
+            var correlationId = GetCorrelationId();
             var user = _usersRepository.Get(id);
 
             if (user == null)
@@ -173,7 +187,9 @@ namespace Morgan.SalesforceSyncPOC.WebApi.Controllers
                 return NotFound();
             }
 
-            _usersRepository.Delete(user.Id);
+            user.IsDeleted = true;
+
+            _usersRepository.Update(user);
             _usersRepository.SaveChanges();
 
             _logger.LogInformation("User deleted. UserId: {UserId}", id);
@@ -181,14 +197,20 @@ namespace Morgan.SalesforceSyncPOC.WebApi.Controllers
             var outbox = new OutboxMessage
             {
                 CorrelationId = Guid.NewGuid(),
-                EventType = UserEvents.Deleted,
+                EventType = EventNames.Deleted,
                 Status = OutboxStatus.Pending,
                 CreatedDate = DateTime.UtcNow,
-                Payload = JsonSerializer.Serialize(new
-                {
-                    UserId = id
-                })
-            };
+                Payload = JsonSerializer.Serialize(
+                    new IntegrationEvent
+                    {
+                        EventId = Guid.NewGuid(),
+                        CorrelationId = correlationId,
+                        EntityName = "Users",
+                        EntityId = id,
+                        EventType = EventNames.Deleted,
+                        OccurredOn = DateTime.UtcNow
+                    })
+                };
 
             _outboxMessageRepository.Add(outbox);
             _outboxMessageRepository.SaveChanges();
@@ -200,6 +222,11 @@ namespace Morgan.SalesforceSyncPOC.WebApi.Controllers
                 id);
 
             return NoContent();
+        }
+
+        private Guid GetCorrelationId()
+        {
+            return Guid.Parse(HttpContext.Items["CorrelationId"]!.ToString()!);
         }
     }
 }

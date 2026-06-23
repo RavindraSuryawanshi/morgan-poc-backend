@@ -25,5 +25,7 @@ namespace Morgan.SalesforceSyncPOC.Core.DataModels
         public string Email { get; set; } = "";
 
         public string Phone { get; set; } = "";
+
+        public bool IsDeleted { get; set; }
     }
 }

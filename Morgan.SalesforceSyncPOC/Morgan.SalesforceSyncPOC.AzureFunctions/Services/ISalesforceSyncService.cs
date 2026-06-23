@@ -15,5 +15,9 @@ namespace Morgan.Salesforce.POC.AzureFunctions.Services
         Task UpsertCustomerAsync(
             UserDto user,
             CancellationToken cancellationToken);
+
+        Task DeleteCustomerAsync(
+            UserDto user,
+            CancellationToken cancellationToken);
     }
 }

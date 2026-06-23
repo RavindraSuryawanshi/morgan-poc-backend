@@ -5,6 +5,7 @@ using Morgan.Salesforce.POC.AzureFunctions.Models;
 using Morgan.Salesforce.POC.AzureFunctions.Services;
 using Morgan.SalesforceSyncPOC.AzureFunctions.Exceptions;
 using Morgan.SalesforceSyncPOC.AzureFunctions.Services;
+using Morgan.SalesforceSyncPOC.Core.Events;
 using Serilog.Context;
 using System.Text.Json;
 
@@ -55,7 +56,7 @@ namespace Morgan.Salesforce.POC.AzureFunctions.Functions
                     var payload = message.Body.ToString();
 
                     var @event = JsonSerializer.Deserialize<UserCreatedEvent>(payload);
-                    _logger.LogInformation("Received Event. UserId: {UserId}", @event?.UserId);
+                    _logger.LogInformation($"Received Event. Entity Id: {@event.EventId} Entity Name : {@event.EntityName}");
 
                     if (@event is null)
                     {
@@ -64,14 +65,13 @@ namespace Morgan.Salesforce.POC.AzureFunctions.Functions
                         throw new InvalidOperationException("Invalid event payload.");
                     }
 
-                    var user = await _userService.GetByIdAsync(@event!.UserId, CancellationToken.None);
+                    var user = await _userService.GetByIdAsync(@event!.EntityId, CancellationToken.None);
 
                     if (user is null)
                     {
-                        _logger.LogError("User not found. UserId: {UserId}",
-                            @event.UserId);
+                        _logger.LogError($"Entity not found. Entity Id: {@event.EventId} Entity Name : {@event.EntityName}");
 
-                        throw new InvalidOperationException($"User {@event.UserId} not found.");
+                        throw new InvalidOperationException($"Entity {@event.EntityId} not found.");
                     }
 
                     _logger.LogInformation("User Loaded. Id:{Id} Name:{FirstName}",
@@ -108,10 +108,18 @@ namespace Morgan.Salesforce.POC.AzureFunctions.Functions
                     //Success Log
                     _logger.LogInformation("Salesforce schema validation successful");
 
-                    _logger.LogInformation("Salesforce synchronization started");
-                    await _syncService.UpsertCustomerAsync(user!, CancellationToken.None);
-                    _logger.LogInformation("Data synced successfully. UserId:{UserId}", user!.Id);
-
+                    if (@event.EventType == EventNames.Created || @event.EventType == EventNames.Updated)
+                    {
+                        _logger.LogInformation("Salesforce synchronization started");
+                        await _syncService.UpsertCustomerAsync(user!, CancellationToken.None);
+                        _logger.LogInformation("Data synced successfully. UserId:{UserId}", user!.Id);
+                    }
+                    else if (@event.EventType == EventNames.Deleted)
+                    {
+                        _logger.LogInformation("Salesforce deletion started");
+                        await _syncService.DeleteCustomerAsync(user!, CancellationToken.None);
+                        _logger.LogInformation("Data deleted successfully. UserId:{UserId}", user!.Id);
+                    }
                     await messageActions.CompleteMessageAsync(message);
                     _logger.LogInformation("Service Bus message completed successfully");
                 }

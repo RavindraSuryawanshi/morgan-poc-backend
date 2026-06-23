@@ -1,15 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿
 
-namespace Morgan.Salesforce.POC.AzureFunctions.Models
+namespace Morgan.SalesforceSyncPOC.Core.Events
 {
-    /// <summary>
-    /// Event published when a user is created.
-    /// </summary>
-    public sealed class UserCreatedEvent
+    public sealed class IntegrationEvent
     {
         public Guid EventId { get; set; }
 

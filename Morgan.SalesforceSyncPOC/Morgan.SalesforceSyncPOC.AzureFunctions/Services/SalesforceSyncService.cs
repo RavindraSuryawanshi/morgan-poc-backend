@@ -40,7 +40,30 @@ namespace Morgan.Salesforce.POC.AzureFunctions.Services
             var response = await _httpClient.PatchAsJsonAsync(url, payload, cancellationToken);
             var responseContent = await response.Content.ReadAsStringAsync();
             if (!response.IsSuccessStatusCode)
-{
+            {
+                _logger.LogError("Salesforce upsert failed. StatusCode: {StatusCode}. Response: {Response}",
+                    response.StatusCode,
+                    responseContent);
+
+                return;
+            }
+        }
+
+        public async Task DeleteCustomerAsync(UserDto user, CancellationToken cancellationToken)
+        {
+            var token = await _authService.AuthenticateAsync(cancellationToken);
+
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.access_token);
+            var payload = new 
+            {
+                Status__C = "Deleted"
+            };
+            var url = $"{token.instance_url}/services/data/{_settings.ApiVersion}/sobjects/{_settings.ObjectName}/ExternalId__c/{user.ExternalId}";
+
+            var response = await _httpClient.PatchAsJsonAsync(url, payload, cancellationToken);
+            var responseContent = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode)
+            {
                 _logger.LogError("Salesforce upsert failed. StatusCode: {StatusCode}. Response: {Response}",
                     response.StatusCode,
                     responseContent);
